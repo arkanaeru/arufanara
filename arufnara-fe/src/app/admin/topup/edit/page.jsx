@@ -108,53 +108,53 @@ export default function EditTopup() {
   };
 
   return (
-    <section className="p-6 max-w-xl mx-auto">
-      <h2 className="text-2xl font-semibold mb-4">Edit Paket Diamond</h2>
-      <form onSubmit={handleSubmit} className="space-y-4 bg-white p-4 shadow rounded">
+    <section className="max-w-xl p-6 mx-auto">
+      <h2 className="mb-4 text-2xl font-semibold">Edit Paket Diamond</h2>
+      <form onSubmit={handleSubmit} className="p-4 space-y-4 bg-white rounded shadow">
         <div>
-          <label className="block text-sm font-medium mb-1">Jumlah Diamond</label>
+          <label className="block mb-1 text-sm font-medium">Jumlah Diamond</label>
           <input
             type="number"
             name="diamond_amount"
             value={form.diamond_amount}
             onChange={handleChange}
             required
-            className="w-full border rounded px-3 py-2"
+            className="w-full px-3 py-2 border rounded"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Bonus Diamond</label>
+          <label className="block mb-1 text-sm font-medium">Bonus Diamond</label>
           <input
             type="number"
             name="bonus_diamond"
             value={form.bonus_diamond}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2"
+            className="w-full px-3 py-2 border rounded"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Harga (IDR)</label>
+          <label className="block mb-1 text-sm font-medium">Harga (IDR)</label>
           <input
             type="number"
             name="price"
             value={form.price}
             onChange={handleChange}
             required
-            className="w-full border rounded px-3 py-2"
+            className="w-full px-3 py-2 border rounded"
           />
         </div>
         <div className="flex justify-between mt-4">
           <button
             type="submit"
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+            className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
           >
             {loading ? "Menyimpan..." : "Simpan"}
           </button>
           <button
             type="button"
             onClick={() => router.push("/admin/topup")}
-            className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded"
+            className="px-4 py-2 text-white bg-gray-400 rounded hover:bg-gray-500"
           >
             Batal
           </button>

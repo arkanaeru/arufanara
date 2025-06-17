@@ -1,704 +1,189 @@
-
-// app/admin/topup.jsx 
 'use client';
-
+// app/admin/page.jsx
 import React, { useState, useEffect } from "react";
-import { Diamond, Plus, Edit, Trash2, X, Save, Search, Filter } from "lucide-react";
-import API from "../../../_api";
+import API from '../../../_api';
+import {
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
-export default function AdminTopUp() {
-  const [topups, setTopups] = useState([]);
+const AdminDashboard = () => {
+
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
-  const [currentTopup, setCurrentTopup] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [priceFilter, setPriceFilter] = useState('all');
-  const [formData, setFormData] = useState({
-    diamond_amount: 0,
-    bonus_diamond: 0,
-    price: 0,
-    description: ''
+  const [chartData, setChartData] = useState([]);
+
+  const getToken = () =>
+    localStorage.getItem('token') || sessionStorage.getItem('token');
+
+  const getAuthConfig = () => ({
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+    },
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const extractData = (res) => {
+    const d = res?.data;
+    if (Array.isArray(d)) return d;
+    if (Array.isArray(d?.data)) return d.data;
+    if (Array.isArray(d?.orders)) return d.orders;
+    if (Array.isArray(d?.result)) return d.result;
+    return d?.data || d?.order || [];
+  };
 
   useEffect(() => {
-    fetchTopups();
-  }, []);
+    const fetchOrders = async () => {
+      try {
+        const res = await API.get('/admin/orders', getAuthConfig());
+        const fetchedOrders = extractData(res);
+        setOrders(fetchedOrders);
 
-  // Helper function untuk mendapatkan auth token
-  const getAuthToken = () => {
-    return localStorage.getItem('authToken') || 
-           localStorage.getItem('token') || 
-           sessionStorage.getItem('authToken') ||
-           sessionStorage.getItem('token');
-  };
+        // Generate chart data by month
+        const countByMonth = {};
 
-  // Helper function untuk membuat config dengan auth header
-  const getAuthConfig = () => {
-    const token = getAuthToken();
-    return token ? {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    } : {
-      headers: {
-        'Content-Type': 'application/json'
+        fetchedOrders.forEach(order => {
+          if (!order.created_at) return;
+
+          const date = new Date(order.created_at);
+          const month = date.toLocaleString('default', { month: 'short' });
+          countByMonth[month] = (countByMonth[month] || 0) + 1;
+        });
+
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const formattedChartData = months.map(month => ({
+          month,
+          orders: countByMonth[month] || 0,
+        }));
+
+        setChartData(formattedChartData);
+      } catch (err) {
+        console.error('Gagal mengambil data order:', err);
+      } finally {
+        setLoading(false);
       }
     };
-  };
 
-  // Helper function untuk extract data dari response
-  const extractResponseData = (response, fallbackKey = 'data') => {
-    const data = response?.data;
-    
-    if (!data) return null;
-    
-    // Jika response berupa array langsung
-    if (Array.isArray(data)) {
-      return data;
-    }
-    
-    // Cek berbagai kemungkinan struktur response
-    if (data.data && Array.isArray(data.data)) {
-      return data.data;
-    }
-    if (data.topups && Array.isArray(data.topups)) {
-      return data.topups;
-    }
-    if (data.diamonds && Array.isArray(data.diamonds)) {
-      return data.diamonds;
-    }
-    if (data.result && Array.isArray(data.result)) {
-      return data.result;
-    }
-    if (data.success && data.data) {
-      return Array.isArray(data.data) ? data.data : [data.data];
-    }
-    
-    // Untuk single object (create/update response)
-    if (data.topup) {
-      return data.topup;
-    }
-    if (data.diamond) {
-      return data.diamond;
-    }
-    if (data.data && !Array.isArray(data.data)) {
-      return data.data;
-    }
-    
-    // Return data as is jika tidak ada struktur khusus
-    return data;
-  };
-
-  const fetchTopups = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const config = getAuthConfig();
-      const response = await API.get("/topup_options", config);
-      
-      const topupData = extractResponseData(response);
-      
-      // Debug: Log struktur data yang diterima
-      console.log('Raw API Response:', response.data);
-      console.log('Extracted Topup Data:', topupData);
-      
-      if (Array.isArray(topupData)) {
-        // Debug: Log beberapa topup pertama untuk melihat struktur
-        if (topupData.length > 0) {
-          console.log('Sample topup data:', topupData[0]);
-        }
-        setTopups(topupData);
-      } else {
-        console.warn('Response data is not an array:', topupData);
-        setTopups([]);
-      }
-      
-    } catch (err) {
-      console.error('Fetch topups error:', err);
-      
-      let errorMessage = 'Gagal mengambil data paket diamond';
-      
-      if (err.response) {
-        // Server responded with error status
-        const status = err.response.status;
-        const serverMessage = err.response.data?.message || err.response.data?.error;
-        
-        if (status === 401) {
-          errorMessage = 'Sesi Anda telah berakhir. Silakan login kembali.';
-        } else if (status === 403) {
-          errorMessage = 'Anda tidak memiliki akses untuk melihat data paket diamond.';
-        } else if (status === 404) {
-          errorMessage = 'Endpoint tidak ditemukan. Periksa konfigurasi API.';
-        } else if (serverMessage) {
-          errorMessage = `${errorMessage}: ${serverMessage}`;
-        }
-      } else if (err.request) {
-        // Network error
-        errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
-      }
-      
-      setError(errorMessage);
-      setTopups([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openCreateModal = () => {
-    setModalMode('create');
-    setCurrentTopup(null);
-    setFormData({
-      diamond_amount: 0,
-      bonus_diamond: 0,
-      price: 0,
-      description: ''
-    });
-    setIsModalOpen(true);
-    setError(null); // Clear any previous errors
-  };
-
-  const openEditModal = (topup) => {
-    setModalMode('edit');
-    setCurrentTopup(topup);
-    setFormData({
-      diamond_amount: topup.diamond_amount || topup.jumlah_diamond || topup.amount || 0,
-      bonus_diamond: topup.bonus_diamond || topup.bonus || 0,
-      price: topup.price || topup.harga || 0,
-      description: topup.description || topup.keterangan || ''
-    });
-    setIsModalOpen(true);
-    setError(null); // Clear any previous errors
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setCurrentTopup(null);
-    setFormData({
-      diamond_amount: 0,
-      bonus_diamond: 0,
-      price: 0,
-      description: ''
-    });
-    setError(null); // Clear any previous errors
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: ['diamond_amount', 'bonus_diamond', 'price'].includes(name) 
-        ? parseInt(value) || 0 
-        : value
-    }));
-  };
-
-  const validateForm = () => {
-    const errors = [];
-    
-    if (!formData.diamond_amount || formData.diamond_amount <= 0) {
-      errors.push('Jumlah diamond harus lebih dari 0');
-    }
-    if (formData.price <= 0) {
-      errors.push('Harga harus lebih dari 0');
-    }
-    if (formData.bonus_diamond < 0) {
-      errors.push('Bonus diamond tidak boleh negatif');
-    }
-    
-    return errors;
-  };
-
-  const handleSubmit = async () => {
-    // Validate form
-    const validationErrors = validateForm();
-    if (validationErrors.length > 0) {
-      setError(validationErrors.join(', '));
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const config = getAuthConfig();
-      
-      // Prepare data untuk dikirim
-      const submitData = { ...formData };
-
-      let response;
-      let successMessage;
-
-      if (modalMode === 'create') {
-        response = await API.post('/admin/topup-options', submitData, config);
-        successMessage = "Paket diamond berhasil dibuat.";
-      } else {
-        // Untuk edit, gunakan ID yang benar
-        const topupId = currentTopup.id || currentTopup._id;
-        if (!topupId) {
-          throw new Error('ID topup tidak ditemukan');
-        }
-        
-        response = await API.put(`/admin/topup-options/${topupId}`, submitData, config);
-        successMessage = "Paket diamond berhasil diupdate.";
-      }
-
-      // Extract data dari response
-      const responseData = extractResponseData(response);
-      
-      if (modalMode === 'create') {
-        // Tambahkan topup baru ke state
-        if (responseData) {
-          setTopups(prev => [...prev, responseData]);
-        } else {
-          // Jika tidak ada data response, fetch ulang untuk memastikan
-          await fetchTopups();
-        }
-      } else {
-        // Update topup di state
-        if (responseData) {
-          setTopups(prev => prev.map(topup => 
-            (topup.id || topup._id) === (currentTopup.id || currentTopup._id) 
-              ? { ...topup, ...responseData } 
-              : topup
-          ));
-        } else {
-          // Jika tidak ada data response, fetch ulang
-          await fetchTopups();
-        }
-      }
-      
-      alert(successMessage);
-      closeModal();
-      
-    } catch (err) {
-      console.error('Submit error:', err);
-      
-      let errorMessage = `Gagal ${modalMode === 'create' ? 'membuat' : 'mengupdate'} paket diamond`;
-      
-      if (err.response) {
-        const status = err.response.status;
-        const serverMessage = err.response.data?.message || err.response.data?.error;
-        
-        if (status === 400) {
-          errorMessage = serverMessage || 'Data yang dikirim tidak valid';
-        } else if (status === 401) {
-          errorMessage = 'Sesi Anda telah berakhir. Silakan login kembali.';
-        } else if (status === 403) {
-          errorMessage = 'Anda tidak memiliki akses untuk melakukan operasi ini.';
-        } else if (status === 409) {
-          errorMessage = 'Paket diamond dengan jumlah ini sudah ada.';
-        } else if (serverMessage) {
-          errorMessage = `${errorMessage}: ${serverMessage}`;
-        }
-      } else if (err.request) {
-        errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
-      } else if (err.message) {
-        errorMessage = `${errorMessage}: ${err.message}`;
-      }
-      
-      setError(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (topup) => {
-    const topupId = topup.id || topup._id;
-    const topupName = `${topup.diamond_amount || topup.jumlah_diamond || topup.amount || 0} Diamond`;
-    
-    if (!topupId) {
-      setError('ID topup tidak ditemukan');
-      return;
-    }
-
-    if (window.confirm(`Apakah Anda yakin ingin menghapus paket ${topupName}?`)) {
-      try {
-        setError(null);
-        const config = getAuthConfig();
-        
-        await API.delete(`/admin/topup-options/${topupId}`, config);
-
-        // Update state - hapus topup dari daftar
-        setTopups(prev => prev.filter(t => (t.id || t._id) !== topupId));
-
-        alert("Paket diamond berhasil dihapus.");
-        
-      } catch (err) {
-        console.error('Delete error:', err);
-        
-        let errorMessage = 'Gagal menghapus paket diamond';
-        
-        if (err.response) {
-          const status = err.response.status;
-          const serverMessage = err.response.data?.message || err.response.data?.error;
-          
-          if (status === 401) {
-            errorMessage = 'Sesi Anda telah berakhir. Silakan login kembali.';
-          } else if (status === 403) {
-            errorMessage = 'Anda tidak memiliki akses untuk menghapus paket diamond.';
-          } else if (status === 404) {
-            errorMessage = 'Paket diamond tidak ditemukan.';
-          } else if (serverMessage) {
-            errorMessage = `${errorMessage}: ${serverMessage}`;
-          }
-        } else if (err.request) {
-          errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
-        }
-        
-        setError(errorMessage);
-      }
-    }
-  };
-
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
-
-  // Filter topups based on search term and price range
-  const filteredTopups = topups.filter(topup => {
-    const diamondAmount = topup.diamond_amount || topup.jumlah_diamond || topup.amount || 0;
-    const price = topup.price || topup.harga || 0;
-    const description = topup.description || topup.keterangan || '';
-    
-    const matchesSearch = 
-      diamondAmount.toString().includes(searchTerm) ||
-      price.toString().includes(searchTerm) ||
-      description.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    let matchesPrice = true;
-    if (priceFilter !== 'all') {
-      const numPrice = typeof price === 'number' ? price : parseInt(price) || 0;
-      switch(priceFilter) {
-        case 'low':
-          matchesPrice = numPrice < 50000;
-          break;
-        case 'medium':
-          matchesPrice = numPrice >= 50000 && numPrice < 200000;
-          break;
-        case 'high':
-          matchesPrice = numPrice >= 200000;
-          break;
-        default:
-          matchesPrice = true;
-      }
-    }
-    
-    return matchesSearch && matchesPrice;
-  });
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="w-12 h-12 border-b-2 border-blue-600 rounded-full animate-spin"></div>
-        </div>
-      </div>
-    );
-  }
-
-
+    fetchOrders();
+  }, []);
+  
   return (
-    <div className="min-h-screen p-6 bg-gray-50">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="mb-2 text-3xl font-bold text-gray-900">Diamond Package Management</h1>
-            <p className="text-gray-600">Kelola paket diamond</p>
-          </div>
-          <button
-            onClick={openCreateModal}
-            className="flex items-center gap-2 px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg shadow-md hover:bg-blue-700"
-          >
-            <Plus size={20} />
-            Tambah Paket
-          </button>
+    <div className="py-10 text-black bg-white dark:bg-dark dark:text-white">
+    
+    <div className="py-10 text-black bg-white dark:bg-dark dark:text-white">
+      <div className="p-6">
+        <div className="p-6 mt-12 bg-white shadow-md rounded-xl">
+          <h2 className="mb-4 text-xl font-semibold text-gray-700">User & Order Trend</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="orders" stroke="#82ca9d" name="Orders" />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
-
-      {/* Error Alert */}
-      {error && (
-        <div className="p-4 mb-6 border-l-4 border-red-400 rounded-r-lg bg-red-50">
-          <div className="flex items-start justify-between">
-            <div className="ml-3">
-              <p className="text-red-700">{error}</p>
-            </div>
-            <button
-              onClick={() => setError(null)}
-              className="text-red-400 hover:text-red-600"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="p-4 mb-6 bg-white rounded-lg shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute text-gray-400 transform -translate-y-1/2 left-3 top-1/2" size={20} />
-              <input
-                type="text"
-                placeholder="Cari berdasarkan jumlah diamond, harga, atau deskripsi..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter size={20} className="text-gray-400" />
-            <select
-              value={priceFilter}
-              onChange={(e) => setPriceFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">Semua Harga</option>
-              <option value="low">Rp 50.000</option>
-              <option value="medium">Rp 50.000 - Rp 200.000</option>
-              <option value="high"> Rp 200.000</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Diamond Packages Table */}
-      <div className="overflow-hidden bg-white rounded-lg shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="border-b border-gray-200 bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">ID</th>
-                <th className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Diamond</th>
-                <th className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Bonus</th>
-                <th className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Harga</th>
-                <th className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Total Diamond</th>
-                <th className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredTopups.length > 0 ? (
-                filteredTopups.map((topup) => {
-                  const diamondAmount = topup.diamond_amount || topup.jumlah_diamond || topup.amount || 0;
-                  const bonusDiamond = topup.bonus_diamond || topup.bonus || 0;
-                  const price = topup.price || topup.harga || 0;
-                  const totalDiamond = diamondAmount + bonusDiamond;
-                  
-                  return (
-                    <tr key={topup.id || topup._id} className="transition-colors hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {topup.id || topup._id}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 w-10 h-10">
-                            <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full">
-                              <Diamond className="w-6 h-6 text-blue-600" />
-                            </div>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {diamondAmount.toLocaleString()} Diamond
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {bonusDiamond > 0 ? (
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">
-                            +{bonusDiamond.toLocaleString()}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                        {typeof price === 'number' ? formatCurrency(price) : price}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded-full">
-                          {totalDiamond.toLocaleString()} Total
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 space-x-2 text-sm">
-                        <button
-                          onClick={() => openEditModal(topup)}
-                          className="inline-flex items-center px-3 py-1 text-blue-700 transition-colors bg-blue-100 rounded-md hover:bg-blue-200"
-                        >
-                          <Edit size={14} className="mr-1" />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(topup)}
-                          className="inline-flex items-center px-3 py-1 text-red-700 transition-colors bg-red-100 rounded-md hover:bg-red-200"
-                        >
-                          <Trash2 size={14} className="mr-1" />
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                    <div className="flex flex-col items-center">
-                      <Diamond className="w-12 h-12 mb-4 text-gray-300" />
-                      <p className="text-lg font-medium">Tidak ada paket diamond ditemukan</p>
-                      <p className="text-sm">Cobalah mengubah filter pencarian atau tambah paket baru</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modal for Create/Edit */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={closeModal}></div>
-            
-            <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-xl">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">
-                  {modalMode === 'create' ? 'Tambah Paket Diamond Baru' : 'Edit Paket Diamond'}
-                </h3>
-                <button
-                  onClick={closeModal}
-                  className="text-gray-400 transition-colors hover:text-gray-600"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              {/* Modal Error Display */}
-              {error && (
-                <div className="p-3 mb-4 border border-red-200 rounded-lg bg-red-50">
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block mb-1 text-sm font-medium text-gray-700">
-                    Jumlah Diamond <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="diamond_amount"
-                    value={formData.diamond_amount}
-                    onChange={handleInputChange}
-                    required
-                    min="1"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Masukkan jumlah diamond"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-1 text-sm font-medium text-gray-700">
-                    Bonus Diamond
-                  </label>
-                  <input
-                    type="number"
-                    name="bonus_diamond"
-                    value={formData.bonus_diamond}
-                    onChange={handleInputChange}
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Bonus diamond (opsional)"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-1 text-sm font-medium text-gray-700">
-                    Harga <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    required
-                    min="1"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Masukkan harga dalam Rupiah"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Preview: {formData.price > 0 ? formatCurrency(formData.price) : 'Rp 0'}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block mb-1 text-sm font-medium text-gray-700">
-                    Deskripsi
-                  </label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows="3"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Deskripsi paket (opsional)"
-                  />
-                </div>
-
-                {/* Summary */}
-                <div className="p-3 rounded-lg bg-blue-50">
-                  <p className="text-sm font-medium text-blue-900">Ringkasan Paket:</p>
-                  <p className="text-sm text-blue-700">
-                    {formData.diamond_amount.toLocaleString()} Diamond 
-                    {formData.bonus_diamond > 0 && ` + ${formData.bonus_diamond.toLocaleString()} Bonus`} = 
-                    <strong> {(formData.diamond_amount + formData.bonus_diamond).toLocaleString()} Total Diamond</strong>
-                  </p>
-                  <p className="text-sm text-blue-700">
-                    Harga: <strong>{formData.price > 0 ? formatCurrency(formData.price) : 'Rp 0'}</strong>
-                  </p>
-                </div>
-
-                <div className="flex justify-end pt-4 space-x-3">
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    disabled={isSubmitting}
-                    className="px-4 py-2 text-gray-700 transition-colors bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="flex items-center gap-2 px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {isSubmitting ? (
-                      <div className="w-4 h-4 border-b-2 border-white rounded-full animate-spin"></div>
-                    ) : (
-                      <Save size={16} />
-                    )}
-                    {isSubmitting ? 'Menyimpan...' : (modalMode === 'create' ? 'Simpan' : 'Update')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
+    
+    <div className="p-4">
+      <div className="mt-12">
+        
+        <div className="grid grid-cols-1 gap-6 mb-4 xl:grid-cols-1">
+          <div className="relative flex flex-col overflow-hidden text-gray-700 bg-white shadow-md bg-clip-border rounded-xl xl:col-span-2">
+            <div className="relative flex items-center justify-between p-6 m-0 overflow-hidden text-gray-700 bg-transparent shadow-none bg-clip-border rounded-xl">
+              <div>
+                <h6 className="block mb-1 font-sans text-base antialiased font-semibold leading-relaxed tracking-normal text-blue-gray-900">
+                  Incoming Order
+                </h6>
+              </div>
+            </div>
+            <div className="p-6 px-0 pt-0 pb-2 overflow-x-auto">
+              <table className="w-full min-w-[640px] table-auto">
+                <thead>
+                  <tr>
+                    <th className="px-6 py-3 text-left border-b border-blue-gray-50">
+                      <p className="block antialiased font-sans text-[11px] font-medium uppercase text-blue-gray-400">
+                        Id
+                      </p>
+                    </th>
+                    <th className="px-6 py-3 text-left border-b border-blue-gray-50">
+                      <p className="block antialiased font-sans text-[11px] font-medium uppercase text-blue-gray-400">
+                        TopUp Option
+                      </p>
+                    </th>
+                    <th className="px-6 py-3 text-left border-b border-blue-gray-50">
+                      <p className="block antialiased font-sans text-[11px] font-medium uppercase text-blue-gray-400">
+                        Jumlah TopUp
+                      </p>
+                    </th>
+                    <th className="px-6 py-3 text-left border-b border-blue-gray-50">
+                      <p className="block antialiased font-sans text-[11px] font-medium uppercase text-blue-gray-400">
+                        Id User
+                      </p>
+                    </th>
+                    <th className="px-6 py-3 text-left border-b border-blue-gray-50">
+                      <p className="block antialiased font-sans text-[11px] font-medium uppercase text-blue-gray-400">
+                        Payment Method
+                      </p>
+                    </th>
+                    <th className="px-6 py-3 text-left border-b border-blue-gray-50">
+                      <p className="block antialiased font-sans text-[11px] font-medium uppercase text-blue-gray-400">
+                        Status
+                      </p>
+                    </th>
+                    <th className="px-6 py-3 text-left border-b border-blue-gray-50">
+                      <p className="block antialiased font-sans text-[11px] font-medium uppercase text-blue-gray-400">
+                        Tanggal
+                      </p>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                  <tr>
+                    <td colSpan="7" className="py-6 text-center">Loading orders...</td>
+                  </tr>
+                  ) : orders.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="py-6 text-center text-gray-400">Tidak ada data order</td>
+                  </tr>
+                  ) : (
+                      orders.map((order, index) => {
+                        const opt = order.topup_option;
+                        const jumlah = opt?.diamond_amount || opt?.amount || '-';
+                        const metode = order.payment_method || '-';
+                        const tanggal = order.created_at ? new Date(order.created_at).toLocaleDateString('id-ID') : '-';
+                        return (
+                          <tr key={order.id || order._id}>
+                            <td className="px-5 py-3 border-b">{order.id || order._id}</td>
+                            <td className="px-5 py-3 border-b">{opt?.id || '-'}</td>
+                            <td className="px-5 py-3 border-b">{jumlah}</td>
+                            <td className="px-5 py-3 border-b">{order.user_id || '-'}</td>
+                            <td className="px-5 py-3 border-b">{metode}</td>
+                            <td className="px-5 py-3 capitalize border-b">{order.status || '-'}</td>
+                            <td className="px-5 py-3 border-b">{tanggal}</td>
+                        </tr>
+                        );
+                      })
+                    )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   );
-}
+};
+
+export default AdminDashboard;
