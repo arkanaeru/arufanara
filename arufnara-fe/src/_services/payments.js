@@ -80,3 +80,47 @@ export const putPayment = async (paymentId, paymentData) => {
     throw error;
   }
 };
+
+
+export const updatePaymentStatus = async (paymentId, status) => {
+  try {
+    const token = localStorage.getItem('token');
+    const { data } = await API.patch(
+      `http://localhost:8000/api/admin/payments/${paymentId}/status`,
+      { payment_status: status },
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return data;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
+
+export const updatePaymentProof = async (paymentId, file) => {
+  try {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('proof_of_payment', file);
+
+    const { data } = await API.post(
+      `http://localhost:8000/api/admin/payments/${paymentId}/proof`,
+      formData,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+    );
+    return data;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};

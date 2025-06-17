@@ -1,25 +1,39 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect } from "react";
-import { User, Plus, Edit, Trash2, X, Save, Search, Filter } from "lucide-react";
-import API from "../../../_api";
+import {
+  User,
+  Plus,
+  Edit,
+  Trash2,
+  X,
+  Save,
+  Search,
+  Filter,
+} from "lucide-react";
+import {
+  getUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+} from "../../../_services/users";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
+  const [modalMode, setModalMode] = useState("create");
   const [currentUser, setCurrentUser] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
   const [formData, setFormData] = useState({
-    name: '',
-    username: '',
-    email: '',
-    password: '',
-    point: "",
-    role: 'user'
+    name: "",
+    username: "",
+    email: "",
+    password: "",
+    point: 0,
+    role: "user",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,116 +41,14 @@ export default function AdminUsers() {
     fetchUsers();
   }, []);
 
-  // Helper function untuk mendapatkan auth token
-  const getAuthToken = () => {
-    return localStorage.getItem('authToken') || 
-           localStorage.getItem('token') || 
-           sessionStorage.getItem('authToken') ||
-           sessionStorage.getItem('token');
-  };
-
-  // Helper function untuk membuat config dengan auth header
-  const getAuthConfig = () => {
-    const token = getAuthToken();
-    return token ? {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    } : {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    };
-  }
-
-  // Helper function untuk extract data dari response
-  const extractResponseData = (response, fallbackKey = 'data') => {
-    const data = response?.data;
-    
-    if (!data) return null;
-    
-    // Jika response berupa array langsung
-    if (Array.isArray(data)) {
-      return data;
-    }
-    
-    // Cek berbagai kemungkinan struktur response
-    if (data.data && Array.isArray(data.data)) {
-      return data.data;
-    }
-    if (data.users && Array.isArray(data.users)) {
-      return data.users;
-    }
-    if (data.result && Array.isArray(data.result)) {
-      return data.result;
-    }
-    if (data.success && data.data) {
-      return Array.isArray(data.data) ? data.data : [data.data];
-    }
-    
-    // Untuk single object (create/update response)
-    if (data.user) {
-      return data.user;
-    }
-    if (data.data && !Array.isArray(data.data)) {
-      return data.data;
-    }
-    
-    // Return data as is jika tidak ada struktur khusus
-    return data;
-  };
-
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      const config = getAuthConfig();
-      const response = await API.get("/admin/users", config);
-      
-      const userData = extractResponseData(response);
-      
-      // Debug: Log struktur data yang diterima
-      console.log('Raw API Response:', response.data);
-      console.log('Extracted User Data:', userData);
-      
-      if (Array.isArray(userData)) {
-        // Debug: Log beberapa user pertama untuk melihat struktur
-        if (userData.length > 0) {
-          console.log('Sample user data:', userData[0]);
-        }
-        setUsers(userData);
-      } else {
-        console.warn('Response data is not an array:', userData);
-        setUsers([]);
-      }
-      
+      const data = await getUsers();
+      setUsers(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('Fetch users error:', err);
-      
-      let errorMessage = 'Gagal mengambil data pengguna';
-      
-      if (err.response) {
-        // Server responded with error status
-        const status = err.response.status;
-        const serverMessage = err.response.data?.message || err.response.data?.error;
-        
-        if (status === 401) {
-          errorMessage = 'Sesi Anda telah berakhir. Silakan login kembali.';
-        } else if (status === 403) {
-          errorMessage = 'Anda tidak memiliki akses untuk melihat data pengguna.';
-        } else if (status === 404) {
-          errorMessage = 'Endpoint tidak ditemukan. Periksa konfigurasi API.';
-        } else if (serverMessage) {
-          errorMessage = `${errorMessage}: ${serverMessage}`;
-        }
-      } else if (err.request) {
-        // Network error
-        errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
-      }
-      
-      setError(errorMessage);
+      setError("Gagal mengambil data pengguna");
       setUsers([]);
     } finally {
       setLoading(false);
@@ -144,169 +56,103 @@ export default function AdminUsers() {
   };
 
   const openCreateModal = () => {
-    setModalMode('create');
+    setModalMode("create");
     setCurrentUser(null);
     setFormData({
-      name: '',
-      username: '',
-      email: '',
-      password: '',
+      name: "",
+      username: "",
+      email: "",
+      password: "",
       point: 0,
-      role: 'user'
+      role: "user",
     });
     setIsModalOpen(true);
-    setError(null); // Clear any previous errors
+    setError(null);
   };
 
   const openEditModal = (user) => {
-    setModalMode('edit');
+    setModalMode("edit");
     setCurrentUser(user);
     setFormData({
-      name: typeof user.name === 'object' ? JSON.stringify(user.name) : (user.name || user.username || ''),
-      username: typeof user.username === 'object' ? JSON.stringify(user.username) : (user.username || ''),
-      email: typeof user.email === 'object' ? JSON.stringify(user.email) : (user.email || ''),
-      password: '',
-      point: typeof (user.point || user.points) === 'object' 
-        ? (user.point?.total_points || user.points?.total_points || 0)
-        : (user.point || user.points || 0),
-      role: typeof user.role === 'object' ? JSON.stringify(user.role) : (user.role || 'user')
+      name: user.name || "",
+      username: user.username || "",
+      email: user.email || "",
+      password: "",
+      point: user.point || user.points || 0,
+      role: user.role || "user",
     });
     setIsModalOpen(true);
-    setError(null); // Clear any previous errors
+    setError(null);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
     setCurrentUser(null);
     setFormData({
-      name: '',
-      username: '',
-      email: '',
-      password: '',
-      role: 'user'
+      name: "",
+      username: "",
+      email: "",
+      password: "",
+      point: 0,
+      role: "user",
     });
-    setError(null); // Clear any previous errors
+    setError(null);
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: name === "point" ? parseInt(value) || 0 : value,
     }));
   };
 
   const validateForm = () => {
     const errors = [];
-    
-    if (!formData.name.trim()) errors.push('Nama tidak boleh kosong');
-    if (!formData.username.trim()) errors.push('Username tidak boleh kosong');
-    if (!formData.email.trim()) errors.push('Email tidak boleh kosong');
-    if (modalMode === 'create' && !formData.password) errors.push('Password tidak boleh kosong');
-    
-    // Email validation
+    if (!formData.name.trim()) errors.push("Nama tidak boleh kosong");
+    if (!formData.username.trim()) errors.push("Username tidak boleh kosong");
+    if (!formData.email.trim()) errors.push("Email tidak boleh kosong");
+    if (modalMode === "create" && !formData.password)
+      errors.push("Password tidak boleh kosong");
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (formData.email && !emailPattern.test(formData.email)) {
-      errors.push('Format email tidak valid');
+      errors.push("Format email tidak valid");
     }
-    
     return errors;
   };
 
   const handleSubmit = async () => {
-    // Validate form
     const validationErrors = validateForm();
     if (validationErrors.length > 0) {
-      setError(validationErrors.join(', '));
+      setError(validationErrors.join(", "));
       return;
     }
-
     setIsSubmitting(true);
     setError(null);
-
     try {
-      const config = getAuthConfig();
-      
-      // Prepare data untuk dikirim
-      const submitData = { ...formData };
-      
-      // Jika mode edit dan password kosong, hapus password dari data
-      if (modalMode === 'edit' && !submitData.password) {
-        delete submitData.password;
-      }
-
-      let response;
-      let successMessage;
-
-      if (modalMode === 'create') {
-        response = await API.post('/admin/users', submitData, config);
-        successMessage = "User berhasil dibuat.";
+      let responseData;
+      if (modalMode === "create") {
+        responseData = await createUser(formData);
+        setUsers((prev) => [...prev, responseData]);
       } else {
-        // Untuk edit, gunakan ID yang benar
         const userId = currentUser.id || currentUser._id;
-        if (!userId) {
-          throw new Error('ID user tidak ditemukan');
-        }
-        
-        response = await API.put(`/admin/users/${userId}`, submitData, config);
-        successMessage = "User berhasil diupdate.";
-      }
-
-      // Extract data dari response
-      const responseData = extractResponseData(response);
-      
-      if (modalMode === 'create') {
-        // Tambahkan user baru ke state
-        if (responseData) {
-          setUsers(prev => [...prev, responseData]);
-        } else {
-          // Jika tidak ada data response, fetch ulang untuk memastikan
-          await fetchUsers();
-        }
-      } else {
-        // Update user di state
-        if (responseData) {
-          setUsers(prev => prev.map(user => 
-            (user.id || user._id) === (currentUser.id || currentUser._id) 
-              ? { ...user, ...responseData } 
+        if (!userId) throw new Error("ID user tidak ditemukan");
+        const submitData = { ...formData };
+        if (!submitData.password) delete submitData.password;
+        responseData = await updateUser(userId, submitData);
+        setUsers((prev) =>
+          prev.map((user) =>
+            (user.id || user._id) === userId
+              ? { ...user, ...responseData }
               : user
-          ));
-        } else {
-          // Jika tidak ada data response, fetch ulang
-          await fetchUsers();
-        }
+          )
+        );
       }
-      
-      alert(successMessage);
       closeModal();
-      
     } catch (err) {
-      console.error('Submit error:', err);
-      
-      let errorMessage = `Gagal ${modalMode === 'create' ? 'membuat' : 'mengupdate'} pengguna`;
-      
-      if (err.response) {
-        const status = err.response.status;
-        const serverMessage = err.response.data?.message || err.response.data?.error;
-        
-        if (status === 400) {
-          errorMessage = serverMessage || 'Data yang dikirim tidak valid';
-        } else if (status === 401) {
-          errorMessage = 'Sesi Anda telah berakhir. Silakan login kembali.';
-        } else if (status === 403) {
-          errorMessage = 'Anda tidak memiliki akses untuk melakukan operasi ini.';
-        } else if (status === 409) {
-          errorMessage = 'Username atau email sudah digunakan.';
-        } else if (serverMessage) {
-          errorMessage = `${errorMessage}: ${serverMessage}`;
-        }
-      } else if (err.request) {
-        errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
-      } else if (err.message) {
-        errorMessage = `${errorMessage}: ${err.message}`;
-      }
-      
-      setError(errorMessage);
+      setError(
+        `Gagal ${modalMode === "create" ? "membuat" : "mengupdate"} pengguna`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -314,67 +160,30 @@ export default function AdminUsers() {
 
   const handleDelete = async (user) => {
     const userId = user.id || user._id;
-    const userName = user.name || user.username || 'pengguna ini';
-    
     if (!userId) {
-      setError('ID user tidak ditemukan');
+      setError("ID user tidak ditemukan");
       return;
     }
-
-    if (window.confirm(`Apakah Anda yakin ingin menghapus ${userName}?`)) {
+    if (window.confirm("Apakah Anda yakin ingin menghapus pengguna ini?")) {
       try {
-        setError(null);
-        const config = getAuthConfig();
-        
-        await API.delete(`/admin/users/${userId}`, config);
-
-        // Update state - hapus user dari daftar
-        setUsers(prev => prev.filter(u => (u.id || u._id) !== userId));
-
-        alert("User berhasil dihapus.");
-        
+        await deleteUser(userId);
+        setUsers((prev) => prev.filter((u) => (u.id || u._id) !== userId));
       } catch (err) {
-        console.error('Delete error:', err);
-        
-        let errorMessage = 'Gagal menghapus pengguna';
-        
-        if (err.response) {
-          const status = err.response.status;
-          const serverMessage = err.response.data?.message || err.response.data?.error;
-          
-          if (status === 401) {
-            errorMessage = 'Sesi Anda telah berakhir. Silakan login kembali.';
-          } else if (status === 403) {
-            errorMessage = 'Anda tidak memiliki akses untuk menghapus pengguna.';
-          } else if (status === 404) {
-            errorMessage = 'Pengguna tidak ditemukan.';
-          } else if (serverMessage) {
-            errorMessage = `${errorMessage}: ${serverMessage}`;
-          }
-        } else if (err.request) {
-          errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
-        }
-        
-        setError(errorMessage);
+        setError("Gagal menghapus pengguna");
       }
     }
   };
 
-  // Filter users based on search term and role
-  const filteredUsers = users.filter(user => {
-    // Ensure user properties are strings before filtering
-    const userName = typeof user.name === 'object' ? JSON.stringify(user.name) : (user.name || '');
-    const userUsername = typeof user.username === 'object' ? JSON.stringify(user.username) : (user.username || '');
-    const userEmail = typeof user.email === 'object' ? JSON.stringify(user.email) : (user.email || '');
-    const userRole = typeof user.role === 'object' ? JSON.stringify(user.role) : (user.role || 'user');
-    
-    const matchesSearch = 
+  const filteredUsers = users.filter((user) => {
+    const userName = user.name || "";
+    const userUsername = user.username || "";
+    const userEmail = user.email || "";
+    const userRole = user.role || "user";
+    const matchesSearch =
       userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       userUsername.toLowerCase().includes(searchTerm.toLowerCase()) ||
       userEmail.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesRole = roleFilter === 'all' || userRole === roleFilter;
-    
+    const matchesRole = roleFilter === "all" || userRole === roleFilter;
     return matchesSearch && matchesRole;
   });
 
@@ -394,7 +203,9 @@ export default function AdminUsers() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="mb-2 text-3xl font-bold text-gray-900">User Management</h1>
+            <h1 className="mb-2 text-3xl font-bold text-gray-900">
+              User Management
+            </h1>
             <p className="text-gray-600">Kelola data User</p>
           </div>
           <button
@@ -429,7 +240,10 @@ export default function AdminUsers() {
         <div className="flex flex-col gap-4 sm:flex-row">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute text-gray-400 transform -translate-y-1/2 left-3 top-1/2" size={20} />
+              <Search
+                className="absolute text-gray-400 transform -translate-y-1/2 left-3 top-1/2"
+                size={20}
+              />
               <input
                 type="text"
                 placeholder="Cari berdasarkan nama, username, atau email..."
@@ -455,22 +269,34 @@ export default function AdminUsers() {
       </div>
 
       {/* Users Table */}
-      <div className="overflow-hidden bg-white rounded-lg shadow-sm">
+      <div className="overflow-hidden bg-white border border-gray-100 shadow-xl rounded-2xl">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="border-b border-gray-200 bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">User</th>
-                <th className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Email</th>
-                <th className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Role</th>
-                <th className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Joined</th>
-                <th className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
+          <table className="w-full min-w-[900px] border-collapse">
+            <thead>
+              <tr className="bg-gradient-to-r from-blue-100 via-blue-50 to-blue-100">
+                <th className="px-6 py-4 text-xs font-bold tracking-widest text-left text-blue-900 uppercase border-b border-blue-200">
+                  User
+                </th>
+                <th className="px-6 py-4 text-xs font-bold tracking-widest text-left text-blue-900 uppercase border-b border-blue-200">
+                  Email
+                </th>
+                <th className="px-6 py-4 text-xs font-bold tracking-widest text-left text-blue-900 uppercase border-b border-blue-200">
+                  Role
+                </th>
+                <th className="px-6 py-4 text-xs font-bold tracking-widest text-left text-blue-900 uppercase border-b border-blue-200">
+                  Actions
+                </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody>
               {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <tr key={user.id || user._id} className="transition-colors hover:bg-gray-50">
+                filteredUsers.map((user, idx) => (
+                  <tr
+                    key={user.id || user._id}
+                    className={`transition-colors duration-150 ${
+                      idx % 2 === 0 ? "bg-white" : "bg-blue-50/60"
+                    } hover:bg-blue-100/60`}
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 w-10 h-10">
@@ -479,46 +305,40 @@ export default function AdminUsers() {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {typeof user.name === 'object' ? JSON.stringify(user.name) : (user.name || user.username || 'Unknown')}
+                          <div className="text-sm font-semibold text-blue-900">
+                            {user.name || user.username || "Unknown"}
                           </div>
-                          <div className="text-sm text-gray-500">
-                            @{typeof user.username === 'object' ? JSON.stringify(user.username) : (user.username || 'unknown')}
+                          <div className="text-sm text-blue-500">
+                            @{user.username || "unknown"}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {typeof user.email === 'object' ? JSON.stringify(user.email) : (user.email || '-')}
+                    <td className="px-6 py-4 text-sm text-blue-900 border-b border-blue-100">
+                      {user.email || "-"}
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.role === 'admin' 
-                          ? 'bg-purple-100 text-purple-800' 
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {user.role || 'user'}
+                    <td className="px-6 py-4 border-b border-blue-100">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          user.role === "admin"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {user.role || "user"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {user.created_at ? (
-                        typeof user.created_at === 'string' 
-                          ? new Date(user.created_at).toLocaleDateString('id-ID')
-                          : user.created_at.toLocaleDateString ? user.created_at.toLocaleDateString('id-ID') : String(user.created_at)
-                      ) : '-'}
-                    </td>
-                    <td className="px-6 py-4 space-x-2 text-sm">
-                      {/* edit button */}
+                    <td className="px-6 py-4 space-x-2 text-sm border-b border-blue-100">
                       <button
                         onClick={() => openEditModal(user)}
-                        className="inline-flex items-center px-3 py-1 text-blue-700 transition-colors bg-blue-100 rounded-md hover:bg-blue-200"
+                        className="inline-flex items-center px-3 py-1 text-blue-700 transition-colors bg-blue-100 rounded-lg shadow hover:bg-blue-200"
                       >
                         <Edit size={14} className="mr-1" />
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(user)}
-                        className="inline-flex items-center px-3 py-1 text-red-700 transition-colors bg-red-100 rounded-md hover:bg-red-200"
+                        className="inline-flex items-center px-3 py-1 text-red-700 transition-colors bg-red-100 rounded-lg shadow hover:bg-red-200"
                       >
                         <Trash2 size={14} className="mr-1" />
                         Delete
@@ -528,11 +348,19 @@ export default function AdminUsers() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                  <td
+                    colSpan="4"
+                    className="px-6 py-12 text-center text-blue-400"
+                  >
                     <div className="flex flex-col items-center">
-                      <User className="w-12 h-12 mb-4 text-gray-300" />
-                      <p className="text-lg font-medium">Tidak ada pengguna ditemukan</p>
-                      <p className="text-sm">Cobalah mengubah filter pencarian atau tambah pengguna baru</p>
+                      <User className="w-12 h-12 mb-4 text-blue-200" />
+                      <p className="text-lg font-semibold">
+                        Tidak ada pengguna ditemukan
+                      </p>
+                      <p className="text-sm">
+                        Cobalah mengubah filter pencarian atau tambah pengguna
+                        baru
+                      </p>
                     </div>
                   </td>
                 </tr>
@@ -546,12 +374,15 @@ export default function AdminUsers() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={closeModal}></div>
-            
+            <div
+              className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
+              onClick={closeModal}
+            ></div>
+
             <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-xl">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium text-gray-900">
-                  {modalMode === 'create' ? 'Tambah User Baru' : 'Edit User'}
+                  {modalMode === "create" ? "Tambah User Baru" : "Edit User"}
                 </h3>
                 <button
                   onClick={closeModal}
@@ -616,22 +447,35 @@ export default function AdminUsers() {
 
                 <div>
                   <label className="block mb-1 text-sm font-medium text-gray-700">
-                    Password {modalMode === 'create' && <span className="text-red-500">*</span>}
-                    {modalMode === 'edit' && <span className="text-xs text-gray-500">(kosongkan jika tidak ingin mengubah)</span>}
+                    Password{" "}
+                    {modalMode === "create" && (
+                      <span className="text-red-500">*</span>
+                    )}
+                    {modalMode === "edit" && (
+                      <span className="text-xs text-gray-500">
+                        (kosongkan jika tidak ingin mengubah)
+                      </span>
+                    )}
                   </label>
                   <input
                     type="password"
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    required={modalMode === 'create'}
+                    required={modalMode === "create"}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder={modalMode === 'create' ? 'Masukkan password' : 'Kosongkan jika tidak diubah'}
+                    placeholder={
+                      modalMode === "create"
+                        ? "Masukkan password"
+                        : "Kosongkan jika tidak diubah"
+                    }
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-1 text-sm font-medium text-gray-700">Points</label>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Points
+                  </label>
                   <input
                     type="number"
                     name="point"
@@ -644,7 +488,9 @@ export default function AdminUsers() {
                 </div>
 
                 <div>
-                  <label className="block mb-1 text-sm font-medium text-gray-700">Role</label>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Role
+                  </label>
                   <select
                     name="role"
                     value={formData.role}
@@ -676,7 +522,11 @@ export default function AdminUsers() {
                     ) : (
                       <Save size={16} />
                     )}
-                    {isSubmitting ? 'Menyimpan...' : (modalMode === 'create' ? 'Simpan' : 'Update')}
+                    {isSubmitting
+                      ? "Menyimpan..."
+                      : modalMode === "create"
+                      ? "Simpan"
+                      : "Update"}
                   </button>
                 </div>
               </div>

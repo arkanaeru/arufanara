@@ -67,3 +67,39 @@ export const getOrderById = async (orderId) => {
     throw error;
   }
 };
+
+export const updateOrderStatus = async (orderId, status) => {
+  try {
+    const token = localStorage.getItem('token');
+    const { data } = await API.put(
+      `http://localhost:8000/api/admin/orders/${orderId}/status`,
+      { status },
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return data;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
+
+export const deleteOrder = async (orderId) => {
+  try {
+    const token = localStorage.getItem('token');
+    await API.delete(`http://localhost:8000/api/admin/orders/${orderId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return true;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
