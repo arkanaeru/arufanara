@@ -1,7 +1,7 @@
 // services/points.js
 
 export async function getPoints(token) {
-    const response = await fetch('http://localhost:8000/api/points', {
+    const response = await fetch('/points', {
         method: 'GET',
         headers: {
             'Accept': 'application/json',

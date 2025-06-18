@@ -4,7 +4,7 @@ export const getOrders = async () => {
   try {
     const token = localStorage.getItem('token'); // atau sessionStorage.getItem('token')
     
-    const { data } = await API.get("http://localhost:8000/api/admin/orders", {
+    const { data } = await API.get("/admin/orders", {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -20,16 +20,14 @@ export const getOrders = async () => {
 
 export const getOrderUser = async () => {
   try {
-    const token = localStorage.getItem('token'); // atau sessionStorage.getItem('token')
-
-    const { data } = await API.get("http://localhost:8000/api/orders", {
+    const token = localStorage.getItem('token');
+    const { data } = await API.get("/orders", {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
-
-    return data.data;
+    return data.data || data; // fallback jika backend return array langsung
   } catch (error) {
     console.error(error);
     throw error;
@@ -39,7 +37,7 @@ export const getOrderUser = async () => {
 export const createOrder = async (orderData) => {
   try {
     const token = localStorage.getItem('token');
-    const { data } = await API.post("http://localhost:8000/api/orders", orderData, {
+    const { data } = await API.post("/orders", orderData, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -55,7 +53,7 @@ export const createOrder = async (orderData) => {
 export const getOrderById = async (orderId) => {
   try {
     const token = localStorage.getItem('token');
-    const { data } = await API.get(`http://localhost:8000/api/orders/${orderId}`, {
+    const { data } = await API.get(`/orders/${orderId}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -72,7 +70,7 @@ export const updateOrderStatus = async (orderId, status) => {
   try {
     const token = localStorage.getItem('token');
     const { data } = await API.put(
-      `http://localhost:8000/api/admin/orders/${orderId}/status`,
+      `/admin/orders/${orderId}/status`,
       { status },
       {
         headers: {
@@ -91,7 +89,7 @@ export const updateOrderStatus = async (orderId, status) => {
 export const deleteOrder = async (orderId) => {
   try {
     const token = localStorage.getItem('token');
-    await API.delete(`http://localhost:8000/api/admin/orders/${orderId}`, {
+    await API.delete(`/admin/orders/${orderId}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'

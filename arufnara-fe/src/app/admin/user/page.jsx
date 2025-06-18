@@ -32,7 +32,6 @@ export default function AdminUsers() {
     username: "",
     email: "",
     password: "",
-    point: 0,
     role: "user",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -93,7 +92,6 @@ export default function AdminUsers() {
       username: "",
       email: "",
       password: "",
-      point: 0,
       role: "user",
     });
     setError(null);
@@ -469,21 +467,6 @@ export default function AdminUsers() {
                         ? "Masukkan password"
                         : "Kosongkan jika tidak diubah"
                     }
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-1 text-sm font-medium text-gray-700">
-                    Points
-                  </label>
-                  <input
-                    type="number"
-                    name="point"
-                    value={formData.point}
-                    onChange={handleInputChange}
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0"
                   />
                 </div>
 

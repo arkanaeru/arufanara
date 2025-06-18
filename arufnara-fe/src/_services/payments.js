@@ -4,7 +4,7 @@ export const getPayments = async () => {
   try {
     const token = localStorage.getItem('token'); // atau sessionStorage.getItem('token')
     
-    const { data } = await API.get("http://localhost:8000/api/admin/payments", {
+    const { data } = await API.get("/admin/payments", {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -21,7 +21,7 @@ export const getPayments = async () => {
 export const getPaymentHistory = async () => {
   try {
     const token = localStorage.getItem('token'); // atau sessionStorage.getItem('token')
-    const { data } = await API.get("http://localhost:8000/api/payments", {
+    const { data } = await API.get("/payments", {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -36,23 +36,25 @@ export const getPaymentHistory = async () => {
 }
 
 export const getPaymentByOrder = async (orderId) => {
+  try {
     const token = localStorage.getItem('token');
-    const response = await fetch(`http://localhost:8000/api/payments/order/${orderId}`, {
-        method: 'GET',
-        headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
+    const { data } = await API.get(`/payments/order/${orderId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
     });
-    if (!response.ok) throw new Error('Gagal mengambil data payment');
-    const data = await response.json();
-    return data.data; // Ambil objek data dari response
-}
+    return data.data || data;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
 
 export const createPayment = async (paymentData) => {
   try {
     const token = localStorage.getItem('token');
-    const { data } = await API.post("http://localhost:8000/api/payments", paymentData, {
+    const { data } = await API.post("/payments", paymentData, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -68,7 +70,7 @@ export const createPayment = async (paymentData) => {
 export const putPayment = async (paymentId, paymentData) => {
   try {
     const token = localStorage.getItem('token');
-    const { data } = await API.put(`http://localhost:8000/api/payments/${paymentId}`, paymentData, {
+    const { data } = await API.put(`/payments/${paymentId}`, paymentData, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -82,12 +84,12 @@ export const putPayment = async (paymentId, paymentData) => {
 };
 
 
-export const updatePaymentStatus = async (paymentId, status) => {
+export const updatePaymentStatus = async (paymentId, payment_status) => {
   try {
     const token = localStorage.getItem('token');
     const { data } = await API.patch(
-      `http://localhost:8000/api/admin/payments/${paymentId}/status`,
-      { payment_status: status },
+      `/admin/payments/${paymentId}/status`,
+      { payment_status },
       {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -109,7 +111,7 @@ export const updatePaymentProof = async (paymentId, file) => {
     formData.append('proof_of_payment', file);
 
     const { data } = await API.post(
-      `http://localhost:8000/api/admin/payments/${paymentId}/proof`,
+      `/admin/payments/${paymentId}/proof`,
       formData,
       {
         headers: {

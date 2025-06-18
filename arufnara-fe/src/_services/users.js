@@ -4,7 +4,7 @@ import API from "../_api";
 export const getUsers = async () => {
   try {
     const token = localStorage.getItem('token');
-    const { data } = await API.get("http://localhost:8000/api/admin/users", {
+    const { data } = await API.get("/admin/users", {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -21,7 +21,7 @@ export const getUsers = async () => {
 export const getUserProfile = async () => {
   try {
     const token = localStorage.getItem('token');
-    const { data } = await API.get("http://localhost:8000/api/user/profile", {
+    const { data } = await API.get("/user/profile", {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -37,7 +37,7 @@ export const getUserProfile = async () => {
 export const editUserProfile = async (profileData) => {
   try {
     const token = localStorage.getItem('token');
-    const { data } = await API.put("http://localhost:8000/api/user/profile", profileData, {
+    const { data } = await API.put("/user/profile", profileData, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -52,7 +52,7 @@ export const editUserProfile = async (profileData) => {
 
 export const registerUser = async (userData) => {
   try {
-    const { data } = await API.post("http://localhost:8000/api/register", userData, {
+    const { data } = await API.post("/register", userData, {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -68,7 +68,7 @@ export const registerUser = async (userData) => {
 export const createUser = async (userData) => {
   try {
     const token = localStorage.getItem('token');
-    const { data } = await API.post("http://localhost:8000/api/admin/users", userData, {
+    const { data } = await API.post("/admin/users", userData, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -85,7 +85,7 @@ export const createUser = async (userData) => {
 export const updateUser = async (userId, userData) => {
   try {
     const token = localStorage.getItem('token');
-    const { data } = await API.put(`http://localhost:8000/api/admin/users/${userId}`, userData, {
+    const { data } = await API.put(`/admin/users/${userId}`, userData, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -102,7 +102,7 @@ export const updateUser = async (userId, userData) => {
 export const deleteUser = async (userId) => {
   try {
     const token = localStorage.getItem('token');
-    await API.delete(`http://localhost:8000/api/admin/users/${userId}`, {
+    await API.delete(`/admin/users/${userId}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'

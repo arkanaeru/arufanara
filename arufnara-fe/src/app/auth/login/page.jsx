@@ -16,7 +16,7 @@ export default function LoginPage() {
         e.preventDefault()
         if (formData.email && formData.password) {
             try {
-                const response = await fetch("http://localhost:8000/api/login", {
+                const response = await fetch("https://arunfara.karyakreasi.id/api/login", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(formData),
