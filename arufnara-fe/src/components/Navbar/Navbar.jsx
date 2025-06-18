@@ -4,6 +4,7 @@ import React from "react";
 import DarkMode from "./DarkMode";
 import { HiMenuAlt3, HiMenuAlt1 } from "react-icons/hi";
 import ResponsiveMenu from "./ResponsiveMenu";
+import Image from "next/image";
 
 export const Navlinks = [
   { id: 1, name: "Home", link: "/" },
@@ -25,14 +26,18 @@ const Navbar = () => {
           {/* Logo Section */}
           <Link href="/">
             <picture>
-              <img
+              <Image
                 src="/arufnara-black.png"
                 alt="Logo"
+                width={100}      // <-- wajib diisi
+  height={60} 
                 className="block h-12 dark:hidden"
               />
-              <img
+              <Image
                 src="/arufnara-white.png"
                 alt="Logo"
+                width={100}      // <-- wajib diisi
+  height={60} 
                 className="hidden h-12 dark:block"
               />
             </picture>

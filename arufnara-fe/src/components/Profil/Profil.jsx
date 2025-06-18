@@ -1,6 +1,7 @@
+import Image from "next/image";
 import React from "react";
 import { Carousel } from "react-responsive-carousel";
-import "react-responsive-carousel/lib/styles/carousel.min.css"; // Import CSS for carousel
+import "react-responsive-carousel/lib/styles/carousel.min.css";
 
 const Profil = () => {
   return (
@@ -31,13 +32,13 @@ const Profil = () => {
                 interval={3000}
               >
                 <div>
-                  <img src="/ml-logo.png" alt="ML Logo 1" />
+                  <Image src="/ml-logo.png" alt="ML Logo 1" width={600} height={800}  />
                 </div>
                 <div>
-                  <img src="/ml-hero1.png" alt="Hero ML 1" />
+                  <Image src="/ml-hero1.png" alt="Hero ML 1" width={600} height={600}  />
                 </div>
                 <div>
-                  <img src="/ml-hero2.png" alt="Hero ML 2" />
+                  <Image src="/ml-hero2.png" alt="Hero ML 2"  width={600} height={600} />
                 </div>
                 {/* Tambahkan gambar sesuai kebutuhan */}
               </Carousel>

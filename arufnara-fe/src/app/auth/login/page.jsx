@@ -2,6 +2,7 @@
 import { useState } from "react"
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false)
@@ -41,7 +42,8 @@ export default function LoginPage() {
                 {/* ... Logo & Title ... */}
                 <div className="mb-8 text-center">
                     <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-white/20 backdrop-blur-lg">
-                        <img src="/logo.png" alt="logo" className="object-contain w-10 h-10" />
+                        <Image src="/logo.png" alt="logo"  width={100}   // tambahkan ini
+  height={60} className="object-contain w-10 h-10" />
                     </div>
                     <h1 className="mb-2 text-3xl font-bold text-white">ARUFNARA</h1>
                     <p className="text-indigo-200">Top up game favoritmu dengan mudah</p>

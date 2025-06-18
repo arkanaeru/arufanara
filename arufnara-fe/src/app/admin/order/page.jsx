@@ -11,7 +11,7 @@ import {
   Save,
 } from "lucide-react";
 import { getOrders, updateOrderStatus } from "../../../_services/orders";
-import { getTopupOptions } from "../../../_services/topup";
+import { getTopup } from "../../../_services/topup";
 
 const AdminOrder = () => {
   const [orders, setOrders] = useState([]);
@@ -50,7 +50,7 @@ const AdminOrder = () => {
 
   const fetchTopupOptions = async () => {
     try {
-      const data = await getTopupOptions();
+      const data = await getTopup();
       setTopupOptions(data);
     } catch (err) {
       // opsional: set error khusus topup options
