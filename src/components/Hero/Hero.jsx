@@ -46,6 +46,8 @@ const Hero = () => {
             <Image
               src={heroML}
               alt="Hero ML"
+               width={1000}   // tambahkan ini
+  height={1000} 
               className="max-h-[500px] max-w-[500px] sm:scale-100 translate-y-10 sm:translate-y-0"
             />
           </div>

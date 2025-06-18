@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Diamond, User, CreditCard, Check, ArrowLeft, Zap } from "lucide-react";
 import { getTopup } from "../../../_services/topup";
@@ -26,54 +26,55 @@ export default function OrderPage() {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [createdOrder, setCreatedOrder] = useState(null);
 
-  const staticPaymentMethods = [
-  { id: "bca", name: "BCA", icon: "🏦", fee: 0 },
-  { id: "bni", name: "BNI", icon: "🏦", fee: 0 },
-  { id: "bri", name: "BRI", icon: "🏦", fee: 0 },
-  { id: "mandiri", name: "Mandiri", icon: "🏦", fee: 0 },
-  { id: "qris", name: "QRIS", icon: "🔳", fee: 0 },
-  // Tambahkan metode lain sesuai kebutuhan
-];
+  const staticPaymentMethods = useMemo(() => [
+    { id: "bca", name: "BCA", icon: "🏦", fee: 0 },
+    { id: "bni", name: "BNI", icon: "🏦", fee: 0 },
+    { id: "bri", name: "BRI", icon: "🏦", fee: 0 },
+    { id: "mandiri", name: "Mandiri", icon: "🏦", fee: 0 },
+    { id: "qris", name: "QRIS", icon: "🔳", fee: 0 },
+  ], []);
 
   useEffect(() => {
-    getTopup()
-      .then((data) => {
-        if (!Array.isArray(data)) {
-          console.error("Data topup bukan array:", data);
-          setDiamondPackages([]);
-          return;
-        }
-        setDiamondPackages(
-          data.map((item) => ({
-            id: item.id,
-            diamond_amount: item.diamond_amount,
-            bonus_diamond: item.bonus_diamond,
-            price: item.price,
-          }))
-        );
-      })
-      .catch((err) => {
-        console.error("Gagal fetch topup:", err);
+  getTopup()
+    .then((data) => {
+      if (!Array.isArray(data)) {
+        console.error("Data topup bukan array:", data);
         setDiamondPackages([]);
-      });
-    getOrderUser()
-      .then((orders) => {
-        const uniqueMethods = [
-          ...new Set(
-            orders
-              .map((order) => order.payment_method)
-              .filter((pm) => pm && pm !== "")
-          ),
-        ].map((pm) => ({
-          id: pm,
-          name: pm.toUpperCase(),
-          icon: "💳",
-          fee: 0,
-        }));
-        setPaymentMethods(staticPaymentMethods);
-      })
-      .catch(() => setPaymentMethods([]));
-  }, []);
+        return;
+      }
+      setDiamondPackages(
+        data.map((item) => ({
+          id: item.id,
+          diamond_amount: item.diamond_amount,
+          bonus_diamond: item.bonus_diamond,
+          price: item.price,
+        }))
+      );
+    })
+    .catch((err) => {
+      console.error("Gagal fetch topup:", err);
+      setDiamondPackages([]);
+    });
+
+  getOrderUser()
+    .then((orders) => {
+      const uniqueMethods = [
+        ...new Set(
+          orders
+            .map((order) => order.payment_method)
+            .filter((pm) => pm && pm !== "")
+        ),
+      ].map((pm) => ({
+        id: pm,
+        name: pm.toUpperCase(),
+        icon: "💳",
+        fee: 0,
+      }));
+      setPaymentMethods(staticPaymentMethods);
+    })
+    .catch(() => setPaymentMethods([]));
+}, [staticPaymentMethods]);
+
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("id-ID", {

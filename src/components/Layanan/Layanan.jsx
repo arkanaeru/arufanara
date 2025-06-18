@@ -59,6 +59,8 @@ const Layanan = () => {
                     <Image
                       src={img}
                       alt=""
+                       width={600}   // tambahkan ini
+  height={800} 
                       className="max-w-[200px] block mx-auto transform -translate-y-20 group-hover:scale-110 group-hover:translate-x-4 duration-300"
                     ></Image>
                   </div>

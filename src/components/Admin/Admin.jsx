@@ -1,4 +1,5 @@
 "use client"
+import Image from 'next/image';
 // components/admin/Admin.jsx
 import { useRouter } from 'next/navigation';
 import React, { useEffect } from 'react';
@@ -20,7 +21,7 @@ const Admin = ({ children }) => {
     if (!token || !user || user.role !== "admin") {
       router.push(user?.role === "user" ? "/user" : "/auth/login");
     }
-  }, []);
+  }, [router]);
 
   return (
     <div>
@@ -29,7 +30,7 @@ const Admin = ({ children }) => {
 
       <header className="sticky top-0 z-50 flex items-center justify-start w-full p-4 text-white duration-300 bg-gray-800 md:justify-center">
         <div className="flex items-center">
-          <img className="mr-2 overflow-hidden rounded-md w-7 h-7 md:w-10 md:h-10" src="/logo.png"/>
+          <Image src="/logo.png" alt= "logo" width={100} height={60} className="mr-2 overflow-hidden rounded-md w-7 h-7 md:w-10 md:h-10"/>
           <span className="text-lg font-semibold"> Admin Control </span>
         </div>
         
